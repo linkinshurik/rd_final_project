@@ -22,10 +22,12 @@ jobs:
     # 1. Bump minor версію → vX.Y.Z
     - id: bump
       run: |
-        PY='import json,semver,sys,os;v=json.load(open("version.json"))["version"];n=str(semver.Version.parse(v).bump_minor());json.dump({"version":n},open("version.json","w"));print(f"TAG={n}")'
-        python - << "$PY"
-        $PY
-        echo "TAG=$(jq -r .version version.json)" >> $GITHUB_OUTPUT
+        pip install jq
+        VERSION=$(jq -r .version version.json)
+        NEW_VERSION=$(python3 -c "import semver; print(semver.Version.parse('$VERSION').bump_minor())")
+        echo "{\"version\": \"$NEW_VERSION\"}" > version.json
+        echo "TAG=$NEW_VERSION" >> $GITHUB_ENV
+        echo "tag=$NEW_VERSION" >> $GITHUB_OUTPUT
 
     # 2. Commit + Git‑tag
     - uses: EndBug/add-and-commit@v9
