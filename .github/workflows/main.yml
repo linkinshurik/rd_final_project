@@ -64,7 +64,7 @@ jobs:
 
     - name: Add SSH key
       run: |
-        echo "${{ secrets.EC2_SSH_KEY }}" | base64 -d > id_key
+        echo "${{ secrets.EC2_SSH_KEY }}" > id_key
         chmod 600 id_key
         echo "StrictHostKeyChecking no" >> ~/.ssh/config
 
