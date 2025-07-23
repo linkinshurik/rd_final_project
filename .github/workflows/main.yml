@@ -43,7 +43,7 @@ jobs:
       run: ./mvnw -B package -DskipTests
     - name: Build & push image
       run: |
-        IMAGE=$REGISTRY/petclinic:${{ steps.bump.outputs.TAG }}
+        IMAGE=$REGISTRY/petclinic:${{ needs.bump-tag-build.outputs.tag }}
         docker build -t $IMAGE .
         echo ${{ secrets.DOCKERHUB_PWD }} | docker login -u ${{ secrets.DOCKERHUB_USER }} --password-stdin
         docker push $IMAGE
