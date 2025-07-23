@@ -1,11 +1,11 @@
 name: Release
+
 on:
   push:
     branches: [main]
 
 env:
   REGISTRY: docker.io/${{ secrets.DOCKERHUB_USER }}
-  TAG: ${{ needs.bump-tag-build.outputs.tag }}
 
 jobs:
   bump-tag-build:
@@ -15,77 +15,71 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-      with: { fetch-depth: 0 }          # потрібна історія для tags
+      with:
+        fetch-depth: 0  # потрібна історія для tags
 
-    - name: Install semver
+    - name: Set up Python & semver
       run: pip install semver==3.0.2
 
-    # 1. Bump minor версію → vX.Y.Z
-    - id: bump
+    - name: Get & bump version
+      id: bump
       run: |
-        pip install jq
-        VERSION=$(jq -r .version version.json)
-        NEW_VERSION=$(python3 -c "import semver; print(semver.Version.parse('$VERSION').bump_minor())")
-        echo "{\"version\": \"$NEW_VERSION\"}" > version.json
-        echo "TAG=$NEW_VERSION" >> $GITHUB_ENV
-        echo "tag=$NEW_VERSION" >> $GITHUB_OUTPUT
+        VERSION=$(git tag --sort=-v:refname | head -n 1 | sed 's/^v//' || echo "1.0.0")
+        NEW_VERSION=$(python3 -c "import semver; print(semver.Version.parse('$VERSION').bump_patch())")
+        echo "TAG=$NEW_VERSION" >> $GITHUB_OUTPUT
 
-    # 2. Commit + Git‑tag
-    - uses: EndBug/add-and-commit@v9
-      with:
-        message: "ci: release ${{ steps.bump.outputs.TAG }}"
-        tag: "v${{ steps.bump.outputs.TAG }}"
+    - name: Create Git tag
+      run: |
+        git config user.name github-actions
+        git config user.email github-actions@github.com
+        git tag v${{ steps.bump.outputs.TAG }}
+        git push origin v${{ steps.bump.outputs.TAG }}
 
     - uses: actions/setup-java@v4
-      with: { distribution: temurin, java-version: 21 }
+      with:
+        distribution: temurin
+        java-version: 21
 
-    # 3. Build jar & image з SemVer тегом
     - name: Build JAR
       run: ./mvnw -B package -DskipTests
-    - name: Build & push image
+
+    - name: Build & push Docker image
       run: |
+        TAG=${{ steps.bump.outputs.TAG }}
         IMAGE=$REGISTRY/petclinic:$TAG
         docker build -t $IMAGE .
-        echo ${{ secrets.DOCKERHUB_PWD }} | docker login -u ${{ secrets.DOCKERHUB_USER }} --password-stdin
+        echo "${{ secrets.DOCKERHUB_PWD }}" | docker login -u "${{ secrets.DOCKERHUB_USER }}" --password-stdin
         docker push $IMAGE
 
-    - uses: actions/upload-artifact@v4
-      with:
-        name: petclinic-${{ steps.bump.outputs.TAG }}.jar
-        path: 'target/*.jar'          # лапки, щоб * не трактувався як anchor
-
-  ### --- ручне прод‑розгортання ---
   deploy:
     needs: bump-tag-build
     runs-on: ubuntu-latest
     environment:
       name: production
-      url: https://<ALB_DNS_NAME>
+      url: http://<EC2_PUBLIC_IP>:8080
+
     steps:
     - name: Install ssh-client
       run: sudo apt-get update && sudo apt-get install -y openssh-client
 
-    # 4. Ключ для SSH
-    - name: Add SSH key
+    - name: Add SSH key
       run: |
         echo "${{ secrets.EC2_SSH_KEY }}" | base64 -d > id_key
         chmod 600 id_key
         echo "StrictHostKeyChecking no" >> ~/.ssh/config
 
-    # 5. Зупинити попередній контейнер, скачати новий, запустити
-    - name: Deploy container
+    - name: Deploy container to EC2
       run: |
         TAG=${{ needs.bump-tag-build.outputs.tag }}
         ssh -i id_key ${{ secrets.EC2_HOST }} "
           docker stop petclinic || true && docker rm petclinic || true
           docker pull $REGISTRY/petclinic:$TAG
           docker run -d --name petclinic -p 8080:8080 \
-            -e SPRING_DATASOURCE_URL='jdbc:mysql://<RDS_ENDPOINT>:3306/petclinic' \
+            -e SPRING_DATASOURCE_URL='jdbc:mysql://${{ secrets.RDS_HOST }}/petclinic' \
             -e SPRING_DATASOURCE_USERNAME=admin \
             -e SPRING_DATASOURCE_PASSWORD='${{ secrets.DB_PWD }}' \
             $REGISTRY/petclinic:$TAG
         "
 
-    # 6. Вивести URL
     - name: Print URL
-      run: echo "App → https://<ALB_DNS_NAME> (version ${{ needs.bump-tag-build.outputs.tag }})"
+      run: echo "App deployed at http://<EC2_PUBLIC_IP>:8080 (version ${{ needs.bump-tag-build.outputs.tag }})"
