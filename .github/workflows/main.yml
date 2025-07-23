@@ -52,38 +52,34 @@ jobs:
         docker push $IMAGE
 
   deploy:
-  needs: bump-tag-build
-  runs-on: ubuntu-latest
-  environment:
-    name: production
-    url: http://{{ secrets.EC2_HOST }}:8080
+    needs: bump-tag-build
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: http://{{ secrets.EC2_HOST }}:8080
 
-  steps:
-  - name: Checkout repo
-    uses: actions/checkout@v4
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v4 
+    - name: Set up SSH key
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        echo -e "Host *\n  StrictHostKeyChecking no\n" >> ~/.ssh/config
 
-  - name: Set up SSH key
-    run: |
-      mkdir -p ~/.ssh
-      echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_rsa
-      chmod 600 ~/.ssh/id_rsa
-      echo -e "Host *\n  StrictHostKeyChecking no\n" >> ~/.ssh/config
-
-  - name: Deploy container to EC2
-    env:
-      REGISTRY: docker.io/${{ secrets.DOCKERHUB_USER }}
-      TAG: ${{ needs.bump-tag-build.outputs.tag }}
-    run: |
-      ssh ec2-user@${{ secrets.EC2_HOST }} <<EOF
-        docker stop petclinic || true
-        docker rm petclinic || true
-        docker pull $REGISTRY/petclinic:$TAG
-        docker run -d --name petclinic -p 8080:8080 \
-          -e SPRING_DATASOURCE_URL='jdbc:mysql://${{ secrets.RDS_ENDPOINT }}/petclinic' \
-          -e SPRING_DATASOURCE_USERNAME=admin \
-          -e SPRING_DATASOURCE_PASSWORD='${{ secrets.DB_PWD }}' \
-          $REGISTRY/petclinic:$TAG
-      EOF
-
-  - name: Print URL
-    run: echo "App deployed to: http://${{ secrets.EC2_HOST }}:8080 (version $TAG)"
+    - name: Deploy container to EC2
+      env:
+        REGISTRY: docker.io/${{ secrets.DOCKERHUB_USER }}
+        TAG: ${{ needs.bump-tag-build.outputs.tag }}
+      run: |
+        ssh ec2-user@${{ secrets.EC2_HOST }} <<EOF
+          docker stop petclinic || true
+          docker rm petclinic || true
+          docker pull $REGISTRY/petclinic:$TAG
+          docker run -d --name petclinic -p 8080:8080 \
+            -e SPRING_DATASOURCE_URL='jdbc:mysql://${{ secrets.RDS_ENDPOINT }}/petclinic' \
+            -e SPRING_DATASOURCE_USERNAME=admin \
+            -e SPRING_DATASOURCE_PASSWORD='${{ secrets.DB_PWD }}' \
+            $REGISTRY/petclinic:$TAG
+        EOF
