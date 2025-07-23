@@ -66,6 +66,7 @@ jobs:
       run: |
         echo "${{ secrets.EC2_SSH_KEY }}" > id_key
         chmod 600 id_key
+        mkdir -p ~/.ssh
         echo "StrictHostKeyChecking no" >> ~/.ssh/config
 
     - name: Deploy container to EC2
