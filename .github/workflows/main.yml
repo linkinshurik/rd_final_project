@@ -64,10 +64,10 @@ jobs:
 
     - name: Add SSH key
       run: |
-        echo "${{ secrets.EC2_SSH_KEY }}" > id_key
-        chmod 600 id_key
         mkdir -p ~/.ssh
-        echo "StrictHostKeyChecking no" >> ~/.ssh/config
+        echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        echo -e "Host *\n\tStrictHostKeyChecking no\n" >> ~/.ssh/config
 
     - name: Deploy container to EC2
       run: |
