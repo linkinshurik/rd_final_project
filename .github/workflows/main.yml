@@ -5,6 +5,7 @@ on:
 
 env:
   REGISTRY: docker.io/${{ secrets.DOCKERHUB_USER }}
+  TAG: ${{ needs.bump-tag-build.outputs.tag }}
 
 jobs:
   bump-tag-build:
@@ -43,7 +44,7 @@ jobs:
       run: ./mvnw -B package -DskipTests
     - name: Build & push image
       run: |
-        IMAGE=$REGISTRY/petclinic:${{ needs.bump-tag-build.outputs.tag }}
+        IMAGE=$REGISTRY/petclinic:$TAG
         docker build -t $IMAGE .
         echo ${{ secrets.DOCKERHUB_PWD }} | docker login -u ${{ secrets.DOCKERHUB_USER }} --password-stdin
         docker push $IMAGE
