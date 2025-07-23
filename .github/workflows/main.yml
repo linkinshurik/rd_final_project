@@ -72,7 +72,7 @@ jobs:
     - name: Deploy container to EC2
       run: |
         TAG=${{ needs.bump-tag-build.outputs.tag }}
-        ssh -i id_key ec2-user@${{ secrets.EC2_HOST }} "
+        ssh -i ~/.ssh/id_rsa ec2-user@${{ secrets.EC2_HOST }} "
           docker stop petclinic || true && docker rm petclinic || true
           docker pull $REGISTRY/petclinic:$TAG
           docker run -d --name petclinic -p 8080:8080 \
