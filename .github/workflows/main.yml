@@ -78,7 +78,7 @@ jobs:
           docker rm petclinic || true
           docker pull $REGISTRY/petclinic:$TAG
           docker run -d --name petclinic -p 8080:8080 \
-            -e SPRING_DATASOURCE_URL='jdbc:mysql://${{ secrets.RDS_ENDPOINT }}/petclinic' \
+            -e SPRING_DATASOURCE_URL='jdbc:mysql://${{ secrets.RDS_ENDPOINT }}:3306/petclinic' \
             -e SPRING_DATASOURCE_USERNAME=admin \
             -e SPRING_DATASOURCE_PASSWORD='${{ secrets.DB_PWD }}' \
             $REGISTRY/petclinic:$TAG
