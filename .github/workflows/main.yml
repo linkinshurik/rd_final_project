@@ -56,7 +56,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: production
-      url: http://{{ secrets.EC2_HOST }}:8080
+      url: http://${{ secrets.EC2_HOST }}:8080
 
     steps:
     - name: Checkout repo
