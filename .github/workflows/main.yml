@@ -54,9 +54,12 @@ jobs:
   deploy:
     needs: bump-tag-build
     runs-on: ubuntu-latest
+    env:                       # ① витягаємо secret у JOB‑env
+      EC2_URL: "http://${{ secrets.EC2_HOST }}:8080"
+
     environment:
-      name: production
-      url: http://${{ secrets.EC2_HOST }}:8080
+      name: ec2
+      url: ${{ env.EC2_URL }}:8080
 
     steps:
     - name: Checkout repo
