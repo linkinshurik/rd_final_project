@@ -54,8 +54,8 @@ jobs:
   deploy:
     needs: bump-tag-build
     runs-on: ubuntu-latest
-    env:                       # ① витягаємо secret у JOB‑env
-      EC2_URL: "http://${{ secrets.EC2_HOST }}:8080"
+    env:                       # ① витягаємо variable у JOB‑env
+      EC2_URL: "http://${{ vars.EC2_HOST }}:8080"
 
     environment:
       name: ec2
@@ -76,7 +76,7 @@ jobs:
         REGISTRY: docker.io/${{ secrets.DOCKERHUB_USER }}
         TAG: ${{ needs.bump-tag-build.outputs.tag }}
       run: |
-        ssh ec2-user@${{ secrets.EC2_HOST }} <<EOF
+        ssh ec2-user@${{ vars.EC2_HOST }} <<EOF
           docker stop petclinic || true
           docker rm petclinic || true
           docker pull $REGISTRY/petclinic:$TAG
