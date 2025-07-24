@@ -59,7 +59,7 @@ jobs:
 
     environment:
       name: ec2
-      url: ${{ env.EC2_URL }}:8080
+      url: ${{ env.EC2_URL }}
 
     steps:
     - name: Checkout repo
